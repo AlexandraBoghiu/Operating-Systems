@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 int lsh_echo(char **args)
 {
@@ -62,13 +63,37 @@ int lsh_cp(char **args)
     return 0;
 };
 
+int lsh_ls(char **args)
+{
+    if (args[1] == NULL)
+    {
+        struct dirent *d;
+        DIR *dir = opendir(".");
+        if (!d)
+        {
+            perror("Unable to read directory.");
+            exit(EXIT_FAILURE);
+        }
+
+        while ((d = readdir(dir)) != NULL)
+        {
+            if (d->d_name[0] == '.') //ignoram hiddem files
+                continue;
+            printf("%s ", d->d_name);
+        }
+        printf("\n");
+    }
+}
+
 char *command_name[] = {
     "echo",
-    "cp"};
+    "cp",
+    "ls"};
 
 int (*commands[])(char **) = {
     &lsh_echo,
-    &lsh_cp};
+    &lsh_cp,
+    &lsh_ls};
 
 int lsh_num_builtins()
 {
