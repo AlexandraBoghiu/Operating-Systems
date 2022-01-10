@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 int lsh_echo(char **args)
 {
@@ -16,17 +17,58 @@ int lsh_echo(char **args)
     }
     return 0;
 }
-//int lsh_comanda2(char **args);
+int lsh_cp(char **args)
+{
+    if (args[1] == NULL || args[2] == NULL)
+    {
+        printf("Not enough arguments.");
+        return 0;
+    }
+    char *src = args[1];
+    char *dest = args[2];
+
+    int auxSrc = open(src, O_RDONLY);
+    if (auxSrc < 0)
+    {
+        printf("Error: %d", errno);
+        return 0;
+    }
+    int auxDest = open(dest, O_CREAT | O_WRONLY, S_IRWXU);
+    if (auxDest < 0)
+    {
+        printf("Error: %d", errno);
+        return 0;
+    }
+    ssize_t reader = -1;
+    char buffer[1024];
+    while (reader = read(auxSrc, buffer, 1024))
+    {
+        int content, written = 0;
+        while (content = write(auxDest, buffer + written, reader - written))
+            written += content;
+        if (written < 0)
+        {
+            printf("Error: %d", errno);
+            return 0;
+        }
+    }
+    if (reader < 0)
+    {
+        printf("Error: %d", errno);
+        return 0;
+    }
+    close(auxSrc);
+    close(auxDest);
+    return 0;
+};
 
 char *command_name[] = {
     "echo",
-    //  "comanda2"
-};
+    "cp"};
 
 int (*commands[])(char **) = {
     &lsh_echo,
-    //&lsh_comanda2
-};
+    &lsh_cp};
 
 int lsh_num_builtins()
 {
