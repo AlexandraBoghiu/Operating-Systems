@@ -7,6 +7,32 @@
 #include <fcntl.h>
 #include <dirent.h>
 
+void ls_function(const char *dir, int op_l)
+{
+    struct dirent *d;
+    DIR *dh = opendir(dir);
+    if (!dh)
+    {
+        if (errno == ENOENT)
+            perror("Directory does not exist.");
+
+        else
+            perror("Unable to read directory.");
+        exit(EXIT_FAILURE);
+    }
+
+    while ((d = readdir(dh)) != NULL)
+    {
+        if (d->d_name[0] == '.') //ignoram hiddem files
+            continue;
+        printf("%s ", d->d_name);
+
+        if (op_l)
+            printf("\n");
+    }
+    if (!op_l)
+        printf("\n");
+}
 int lsh_echo(char **args)
 {
 
@@ -67,22 +93,48 @@ int lsh_ls(char **args)
 {
     if (args[1] == NULL)
     {
-        struct dirent *d;
-        DIR *dir = opendir(".");
-        if (!d)
+        ls_function(".", 0);
+    }
+    else if (args[1] != NULL && args[2] == NULL)
+    {
+        if (args[1][0] == '-')
+        { //daca avem vreo optiune (l)
+
+            int op_l = 0;
+            char *p = args[1] + 1;
+            if (*p == 'l')
+                op_l = 1;
+            else
+            {
+                perror("Unknown option error.");
+                exit(EXIT_FAILURE);
+            }
+
+            ls_function(".", op_l);
+        }
+        else
+            ls_function(args[1], 0);
+    }
+    else if (args[1] != NULL && args[2] != NULL && args[3] == NULL)
+    {
+        if (args[1][0] != '-')
         {
-            perror("Unable to read directory.");
+            perror("Incorrect Usage error.");
+            exit(EXIT_FAILURE);
+        }
+        int op_l = 0;
+        char *p = args[1] + 1;
+        if (*p == 'l')
+            op_l = 1;
+        else
+        {
+            perror("Unknown option error.");
             exit(EXIT_FAILURE);
         }
 
-        while ((d = readdir(dir)) != NULL)
-        {
-            if (d->d_name[0] == '.') //ignoram hiddem files
-                continue;
-            printf("%s ", d->d_name);
-        }
-        printf("\n");
+        ls_function(args[2], op_l);
     }
+    return 0;
 }
 
 char *command_name[] = {
