@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 void ls_function(const char *dir, int op_l)
 {
@@ -23,7 +24,7 @@ void ls_function(const char *dir, int op_l)
 
     while ((d = readdir(dh)) != NULL)
     {
-        if (d->d_name[0] == '.') //ignoram hiddem files
+        if (d->d_name[0] == '.') //ignoram hidden files
             continue;
         printf("%s ", d->d_name);
 
@@ -32,6 +33,74 @@ void ls_function(const char *dir, int op_l)
     }
     if (!op_l)
         printf("\n");
+}
+
+void rm_function(const char *path)
+{
+    size_t path_len;
+    char *full_path;
+    DIR *dir;
+    struct stat stat_path, stat_d;
+    struct dirent *d;
+
+    // stat for the path
+    stat(path, &stat_path); //stat() gets status information about "path" and places it in the area of memory pointed to by the buf argument.
+
+    // if path does not exists or is not dir - exit with status -1
+    if (S_ISDIR(stat_path.st_mode) == 0)
+    {
+        perror("Not a directory");
+        exit(EXIT_FAILURE);
+    }
+
+    // nu se poate sterge 
+    if ((dir = opendir(path)) == NULL)
+    {
+        perror("Not possible.");
+        exit(EXIT_FAILURE);
+    }
+
+    // lungimea path-ului
+    path_len = strlen(path);
+
+    //trec prin fisierele/folderele din folderul curent
+    while ((d = readdir(dir)) != NULL)
+    {
+
+        if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) //sar peste . si .., nu vreau sa mai merg recursiv atunci
+            continue;
+
+        // urmeaza sa creez full path pentru fisierul/folderul curent
+        full_path = calloc(path_len + strlen(d->d_name) + 1, sizeof(char));
+        strcpy(full_path, path);
+        strcat(full_path, "/");
+        strcat(full_path, d->d_name);
+
+        // stat pt d ca sa verific daca e fisier sau folder ulterior
+        stat(full_path, &stat_d);
+
+        // sterg un folder recursiv
+        if (S_ISDIR(stat_d.st_mode) != 0)
+        {
+            rm_function(full_path);
+            continue;
+        }
+
+
+        if (unlink(full_path) == 0) //sterg fisier (folderele trebuie sa nu aiba fisiere pentru a le putea sterge)
+            printf("Removed a file: %s\n", full_path);
+        else
+            printf("Cannot remove a file: %s\n", full_path);
+        free(full_path);
+    }
+
+    // sterg folderul gol
+    if (rmdir(path) == 0)
+        printf("Removed a directory: %s\n", path);
+    else
+        printf("Can`t remove a directory: %s\n", path);
+
+    closedir(dir);
 }
 int lsh_echo(char **args)
 {
@@ -136,16 +205,42 @@ int lsh_ls(char **args)
     }
     return 0;
 }
+int lsh_rm(char **args)
+{
 
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "Missing path");
+        exit(EXIT_FAILURE);
+    }
+    struct stat stat_path;
+    // stat for the path
+    stat(args[1], &stat_path);      //stat() gets status information about "path" and places it in the area of memory pointed to by the buf argument.
+    if (S_ISREG(stat_path.st_mode)) //daca sterg un file
+    {
+        if (unlink(args[1]) == 0)
+        {
+            printf("Removed a file: %s\n", args[1]);
+        }
+        else {
+            perror("Cannot remove the file.");
+            exit(EXIT_FAILURE);
+        }
+    }
+    else
+        rm_function(args[1]);
+}
 char *command_name[] = {
     "echo",
     "cp",
-    "ls"};
+    "ls",
+    "rm"};
 
 int (*commands[])(char **) = {
     &lsh_echo,
     &lsh_cp,
-    &lsh_ls};
+    &lsh_ls,
+    &lsh_rm};
 
 int lsh_num_builtins()
 {
