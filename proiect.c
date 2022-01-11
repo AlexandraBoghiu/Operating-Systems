@@ -53,7 +53,7 @@ void rm_function(const char *path)
         exit(EXIT_FAILURE);
     }
 
-    // nu se poate sterge 
+    // nu se poate sterge
     if ((dir = opendir(path)) == NULL)
     {
         perror("Not possible.");
@@ -85,7 +85,6 @@ void rm_function(const char *path)
             rm_function(full_path);
             continue;
         }
-
 
         if (unlink(full_path) == 0) //sterg fisier (folderele trebuie sa nu aiba fisiere pentru a le putea sterge)
             printf("Removed a file: %s\n", full_path);
@@ -222,7 +221,8 @@ int lsh_rm(char **args)
         {
             printf("Removed a file: %s\n", args[1]);
         }
-        else {
+        else
+        {
             perror("Cannot remove the file.");
             exit(EXIT_FAILURE);
         }
@@ -230,24 +230,44 @@ int lsh_rm(char **args)
     else
         rm_function(args[1]);
 }
-int lsh_mv(char **args)
+int lsh_mkdir(char **args)
 {
-    lsh_cp(args);
-    lsh_rm(args);
+    if (args[1] == NULL)
+    {
+        perror("Not enough arguments.");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        int result = mkdir(args[1], S_IRWXU);
+        if (result == -1)
+        {
+            perror("Cannot create directory.");
+            exit(EXIT_FAILURE);
+        }
+    }
 }
+int lsh_version()
+{
+    printf("Proiect Sisteme de Operare\nBoghiu Alexandra-Adriana, grupa 234\n");
+    return 0;
+}
+
 char *command_name[] = {
     "echo",
     "cp",
     "ls",
     "rm",
-    "mv"};
+    "mkdir",
+    "version"};
 
 int (*commands[])(char **) = {
     &lsh_echo,
     &lsh_cp,
     &lsh_ls,
     &lsh_rm,
-    &lsh_mv};
+    &lsh_mkdir,
+    &lsh_version};
 
 int lsh_num_builtins()
 {
@@ -293,7 +313,12 @@ int lsh_execute(char **args)
     for (int i = 0; i < lsh_num_builtins(); i++)
     {
         if (!strcmp(args[0], command_name[i])) //imi cauta in comenzi si daca o gaseste, executa
-            return (*commands[i])(args);
+        {
+            if (args[0] == "version")
+                lsh_version();
+            else
+                return (*commands[i])(args);
+        }
     }
     return lsh_launch(args); //daca nu gaseste o comanda, imi face procesul
 }
