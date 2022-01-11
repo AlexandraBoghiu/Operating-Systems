@@ -230,17 +230,24 @@ int lsh_rm(char **args)
     else
         rm_function(args[1]);
 }
+int lsh_mv(char **args)
+{
+    lsh_cp(args);
+    lsh_rm(args);
+}
 char *command_name[] = {
     "echo",
     "cp",
     "ls",
-    "rm"};
+    "rm",
+    "mv"};
 
 int (*commands[])(char **) = {
     &lsh_echo,
     &lsh_cp,
     &lsh_ls,
-    &lsh_rm};
+    &lsh_rm,
+    &lsh_mv};
 
 int lsh_num_builtins()
 {
