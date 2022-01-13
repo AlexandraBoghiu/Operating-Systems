@@ -14,8 +14,8 @@ void ls_function(const char *dir, int op_l)
     DIR *dh = opendir(dir);
     if (!dh)
     {
-        if (errno == ENOENT)
-            perror("Directory does not exist.");
+        if (errno == ENOENT) //no such file or directory
+            perror("Error");
 
         else
             perror("Unable to read directory.");
@@ -49,14 +49,14 @@ void rm_function(const char *path)
     // if path does not exists or is not dir - exit with status -1
     if (S_ISDIR(stat_path.st_mode) == 0)
     {
-        perror("Not a directory");
+        perror("Error");
         exit(EXIT_FAILURE);
     }
 
     // nu se poate sterge
     if ((dir = opendir(path)) == NULL)
     {
-        perror("Not possible.");
+        perror("Cannot delete");
         exit(EXIT_FAILURE);
     }
 
@@ -103,7 +103,6 @@ void rm_function(const char *path)
 }
 int lsh_echo(char **args)
 {
-
     int i = 1;
     while (args[i] != NULL)
     {
@@ -117,7 +116,7 @@ int lsh_cp(char **args)
     if (args[1] == NULL || args[2] == NULL)
     {
         printf("Not enough arguments.");
-        return 0;
+        return 1;
     }
     char *src = args[1];
     char *dest = args[2];
@@ -125,14 +124,14 @@ int lsh_cp(char **args)
     int auxSrc = open(src, O_RDONLY);
     if (auxSrc < 0)
     {
-        printf("Error: %d", errno);
-        return 0;
+        perror("Error");
+        return 1;
     }
     int auxDest = open(dest, O_CREAT | O_WRONLY, S_IRWXU);
     if (auxDest < 0)
     {
-        printf("Error: %d", errno);
-        return 0;
+        perror("Error");
+        return 1;
     }
     ssize_t reader = -1;
     char buffer[1024];
@@ -143,14 +142,14 @@ int lsh_cp(char **args)
             written += content;
         if (written < 0)
         {
-            printf("Error: %d", errno);
-            return 0;
+            perror("Error");
+            return 1;
         }
     }
     if (reader < 0)
     {
-        printf("Error: %d", errno);
-        return 0;
+        perror("Error");
+        return 1;
     }
     close(auxSrc);
     close(auxDest);
@@ -174,8 +173,8 @@ int lsh_ls(char **args)
                 op_l = 1;
             else
             {
-                perror("Unknown option error.");
-                exit(EXIT_FAILURE);
+                perror("Unknown option. Available options: -l");
+                return 1;
             }
 
             ls_function(".", op_l);
@@ -187,8 +186,8 @@ int lsh_ls(char **args)
     {
         if (args[1][0] != '-')
         {
-            perror("Incorrect Usage error.");
-            exit(EXIT_FAILURE);
+            perror("Incorrect usage error.");
+            return 1;
         }
         int op_l = 0;
         char *p = args[1] + 1;
@@ -197,7 +196,7 @@ int lsh_ls(char **args)
         else
         {
             perror("Unknown option error.");
-            exit(EXIT_FAILURE);
+            return 1;
         }
 
         ls_function(args[2], op_l);
@@ -210,7 +209,7 @@ int lsh_rm(char **args)
     if (args[1] == NULL)
     {
         fprintf(stderr, "Missing path");
-        exit(EXIT_FAILURE);
+        return 1;
     }
     struct stat stat_path;
     // stat for the path
@@ -224,18 +223,20 @@ int lsh_rm(char **args)
         else
         {
             perror("Cannot remove the file.");
-            exit(EXIT_FAILURE);
+            return 1;
         }
     }
     else
         rm_function(args[1]);
+
+    return 0;
 }
 int lsh_mkdir(char **args)
 {
     if (args[1] == NULL)
     {
         perror("Not enough arguments.");
-        exit(EXIT_FAILURE);
+        return 1;
     }
     else
     {
@@ -243,14 +244,24 @@ int lsh_mkdir(char **args)
         if (result == -1)
         {
             perror("Cannot create directory.");
-            exit(EXIT_FAILURE);
+            return 1;
         }
     }
+    return 0;
+}
+int lsh_help()
+{
+    printf("Available commands:\nls (-l)\ncp\nrm\nmkdir\nversion\nexit\n");
+    return 0;
 }
 int lsh_version()
 {
-    printf("Proiect Sisteme de Operare\nBoghiu Alexandra-Adriana, grupa 234\n");
+    printf("v1.0 Proiect Sisteme de Operare\nBoghiu Alexandra-Adriana, grupa 234\n");
     return 0;
+}
+int lsh_exit()
+{
+    return 1;
 }
 
 char *command_name[] = {
@@ -259,7 +270,9 @@ char *command_name[] = {
     "ls",
     "rm",
     "mkdir",
-    "version"};
+    "help",
+    "version",
+    "exit"};
 
 int (*commands[])(char **) = {
     &lsh_echo,
@@ -267,7 +280,9 @@ int (*commands[])(char **) = {
     &lsh_ls,
     &lsh_rm,
     &lsh_mkdir,
-    &lsh_version};
+    &lsh_help,
+    &lsh_version,
+    &lsh_exit};
 
 int lsh_num_builtins()
 {
@@ -286,14 +301,15 @@ int lsh_launch(char **args) //primeste argumentele facute anterior
     if (!pid)     //proces-copil
     {
         if (execvp(args[0], args) == -1) //execvp ruleaza noul program "peste" cel vechi (il  inlocuieste)
+                                         //trb exec ca sa nu am 2 copii ale aceluiasi program
                                          //execvp se asteapta sa primeasca un nume de program si un array
                                          //v -> array de argumente unde primul e numele programului
                                          //p -> in loc sa dau full path, dau numai numele programului si las sistemul sa il caute
-            perror("lsh");               //daca returneaza -1, eroare
-        exit(EXIT_FAILURE);
+            perror("Launch error");      //daca returneaza -1, eroare
+        return 1;
     }
     else if (pid < 0) //daca fork da eroare
-        perror("lsh");
+        perror("Launch error");
 
     else
         do
@@ -302,7 +318,7 @@ int lsh_launch(char **args) //primeste argumentele facute anterior
             //wuntraced -> pastreaza statusul procesului-copil care s-a oprit
         } while (!WIFEXITED(status) && !WIFSIGNALED(status)); //WIFEXITED(status) verifica daca procesul-copil s-a terminat cu succes cu exit
     //WIFSIGNALED(status) verifica daca procesul-copil s-a terminat cu succes (nu a primit semnale "nerezolvate")
-    return 1;
+    return 0;
 }
 
 int lsh_execute(char **args)
@@ -314,9 +330,6 @@ int lsh_execute(char **args)
     {
         if (!strcmp(args[0], command_name[i])) //imi cauta in comenzi si daca o gaseste, executa
         {
-            if (args[0] == "version")
-                lsh_version();
-            else
                 return (*commands[i])(args);
         }
     }
@@ -331,7 +344,7 @@ char **lsh_split_line(char *line)
     if (!tokens) //nu s-a alocat memorie corect
     {
 
-        fprintf(stderr, "lsh: allocation error\n");
+        perror("Allocation error");
         exit(EXIT_FAILURE);
     }
 
@@ -349,7 +362,7 @@ char **lsh_split_line(char *line)
 
             if (!tokens)
             {
-                fprintf(stderr, "lsh: allocation error\n");
+                fprintf(stderr, "Allocation error");
                 exit(EXIT_FAILURE);
             }
         }
@@ -372,7 +385,7 @@ char *lsh_read_line()
             exit(EXIT_SUCCESS); //am ajuns la sfarsitul fisierului (EOF)
         else
         {
-            perror("readline error");
+            perror("Readline error");
             exit(EXIT_FAILURE); //eroare
         }
     }
@@ -395,12 +408,12 @@ void lsh_loop()
         free(line);
         free(args);
 
-    } while (status);
+    } while (!status);
 }
 int main(int argc, char **argv)
 {
 
     lsh_loop();
 
-    return EXIT_SUCCESS;
+    return 0;
 }
