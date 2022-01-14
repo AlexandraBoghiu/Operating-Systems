@@ -14,7 +14,7 @@ void ls_function(const char *dir, int op_l)
     DIR *dh = opendir(dir);
     if (!dh)
     {
-        if (errno == ENOENT) //no such file or directory
+        if (errno == ENOENT)
             perror("Error");
 
         else
@@ -24,7 +24,7 @@ void ls_function(const char *dir, int op_l)
 
     while ((d = readdir(dh)) != NULL)
     {
-        if (d->d_name[0] == '.') //ignoram hidden files
+        if (d->d_name[0] == '.')
             continue;
         printf("%s ", d->d_name);
 
@@ -43,57 +43,48 @@ void rm_function(const char *path)
     struct stat stat_path, stat_d;
     struct dirent *d;
 
-    // stat for the path
-    stat(path, &stat_path); //stat() gets status information about "path" and places it in the area of memory pointed to by the buf argument.
+    stat(path, &stat_path);
 
-    // if path does not exists or is not dir - exit with status -1
     if (S_ISDIR(stat_path.st_mode) == 0)
     {
         perror("Error");
         exit(EXIT_FAILURE);
     }
 
-    // nu se poate sterge
     if ((dir = opendir(path)) == NULL)
     {
         perror("Cannot delete");
         exit(EXIT_FAILURE);
     }
 
-    // lungimea path-ului
     path_len = strlen(path);
 
-    //trec prin fisierele/folderele din folderul curent
     while ((d = readdir(dir)) != NULL)
     {
 
-        if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, "..")) //sar peste . si .., nu vreau sa mai merg recursiv atunci
+        if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, ".."))
             continue;
 
-        // urmeaza sa creez full path pentru fisierul/folderul curent
         full_path = calloc(path_len + strlen(d->d_name) + 1, sizeof(char));
         strcpy(full_path, path);
         strcat(full_path, "/");
         strcat(full_path, d->d_name);
 
-        // stat pt d ca sa verific daca e fisier sau folder ulterior
         stat(full_path, &stat_d);
 
-        // sterg un folder recursiv
         if (S_ISDIR(stat_d.st_mode) != 0)
         {
             rm_function(full_path);
             continue;
         }
 
-        if (unlink(full_path) == 0) //sterg fisier (folderele trebuie sa nu aiba fisiere pentru a le putea sterge)
+        if (unlink(full_path) == 0)
             printf("Removed a file: %s\n", full_path);
         else
             printf("Cannot remove a file: %s\n", full_path);
         free(full_path);
     }
 
-    // sterg folderul gol
     if (rmdir(path) == 0)
         printf("Removed a directory: %s\n", path);
     else
@@ -165,7 +156,7 @@ int lsh_ls(char **args)
     else if (args[1] != NULL && args[2] == NULL)
     {
         if (args[1][0] == '-')
-        { //daca avem vreo optiune (l)
+        {
 
             int op_l = 0;
             char *p = args[1] + 1;
@@ -212,9 +203,9 @@ int lsh_rm(char **args)
         return 1;
     }
     struct stat stat_path;
-    // stat for the path
-    stat(args[1], &stat_path);      //stat() gets status information about "path" and places it in the area of memory pointed to by the buf argument.
-    if (S_ISREG(stat_path.st_mode)) //daca sterg un file
+
+    stat(args[1], &stat_path);
+    if (S_ISREG(stat_path.st_mode))
     {
         if (unlink(args[1]) == 0)
         {
@@ -292,20 +283,16 @@ int lsh_num_builtins()
 #define LSH_TOK_DELIM " \t\r\n\a"
 int int_mode = 1;
 
-int lsh_launch(char **args) //primeste argumentele facute anterior
+int lsh_launch(char **args)
 {
     pid_t pid, wpid;
     int status;
 
-    pid = fork(); //creez un proces nou
-    if (!pid)     //proces-copil
+    pid = fork();
+    if (!pid)
     {
-        if (execvp(args[0], args) == -1) //execvp ruleaza noul program "peste" cel vechi (il  inlocuieste)
-                                         //trb exec ca sa nu am 2 copii ale aceluiasi program
-                                         //execvp se asteapta sa primeasca un nume de program si un array
-                                         //v -> array de argumente unde primul e numele programului
-                                         //p -> in loc sa dau full path, dau numai numele programului si las sistemul sa il caute
-            perror("Launch error");      //daca returneaza -1, eroare
+        if (execvp(args[0], args) == -1)
+            perror("Launch error");
         return 1;
     }
     else if (pid < 0) //daca fork da eroare
@@ -314,26 +301,25 @@ int lsh_launch(char **args) //primeste argumentele facute anterior
     else
         do
         {
-            wpid = waitpid(pid, &status, WUNTRACED); //parintele asteapta dupa copil
-            //wuntraced -> pastreaza statusul procesului-copil care s-a oprit
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status)); //WIFEXITED(status) verifica daca procesul-copil s-a terminat cu succes cu exit
-    //WIFSIGNALED(status) verifica daca procesul-copil s-a terminat cu succes (nu a primit semnale "nerezolvate")
+            wpid = waitpid(pid, &status, WUNTRACED); 
+
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
     return 0;
 }
 
 int lsh_execute(char **args)
 {
     if (args[0] == NULL)
-        return 1; //comanda fara nimic de fapt
+        return 1; 
 
     for (int i = 0; i < lsh_num_builtins(); i++)
     {
-        if (!strcmp(args[0], command_name[i])) //imi cauta in comenzi si daca o gaseste, executa
+        if (!strcmp(args[0], command_name[i])) 
         {
-                return (*commands[i])(args);
+            return (*commands[i])(args);
         }
     }
-    return lsh_launch(args); //daca nu gaseste o comanda, imi face procesul
+    return lsh_launch(args); 
 }
 char **lsh_split_line(char *line)
 {
@@ -341,21 +327,21 @@ char **lsh_split_line(char *line)
     char **tokens = malloc(bufsize * sizeof(char *));
     char *token;
 
-    if (!tokens) //nu s-a alocat memorie corect
+    if (!tokens) 
     {
 
         perror("Allocation error");
         exit(EXIT_FAILURE);
     }
 
-    token = strtok(line, LSH_TOK_DELIM); //incep sa separ textul
+    token = strtok(line, LSH_TOK_DELIM); 
 
     while (token != NULL)
     {
         tokens[position] = token;
         position++;
 
-        if (position >= bufsize) //daca am nevoie de mai multa memorie, o realoc
+        if (position >= bufsize) 
         {
             bufsize += LSH_TOK_BUFSIZE;
             tokens = realloc(tokens, bufsize * sizeof(char *));
@@ -370,7 +356,7 @@ char **lsh_split_line(char *line)
         token = strtok(NULL, LSH_TOK_DELIM);
     }
 
-    tokens[position] = NULL; //am terminat
+    tokens[position] = NULL; 
 
     return tokens;
 }
@@ -382,11 +368,11 @@ char *lsh_read_line()
     if (getline(&line, &bufsize, stdin) == -1)
     {
         if (feof(stdin))
-            exit(EXIT_SUCCESS); //am ajuns la sfarsitul fisierului (EOF)
+            exit(EXIT_SUCCESS); 
         else
         {
             perror("Readline error");
-            exit(EXIT_FAILURE); //eroare
+            exit(EXIT_FAILURE); 
         }
     }
 
@@ -401,9 +387,9 @@ void lsh_loop()
     do
     {
         printf("dbxcli ");
-        line = lsh_read_line();      //citesc comanda
-        args = lsh_split_line(line); //separ comanda in program si argumente
-        status = lsh_execute(args);  //execut
+        line = lsh_read_line();      
+        args = lsh_split_line(line); 
+        status = lsh_execute(args);  
 
         free(line);
         free(args);
